@@ -24,6 +24,7 @@ pushd $RISCV_GNU_TOOLCHAIN_SRC
 make -j$(nproc) linux
 
 popd
+rm -rf $RISCV_GNU_TOOLCHAIN_SRC
 echo "Toolchain built and installed in $RISCV_GNU_TOOLCHAIN_INSTALL"
 
 git clone https://github.com/llvm/llvm-project.git $LLVM_SRC -b $LLVM_TAG --depth 1
