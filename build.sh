@@ -7,8 +7,7 @@ RISCV_GNU_TOOLCHAIN_TAG=2026.08.25
 RISCV_GNU_TOOLCHAIN_SRC=$PWD/riscv-gnu-toolchain
 RISCV_GNU_TOOLCHAIN_INSTALL=$1
 
-LLVM_TAG=llvmorg-22.1.8
-LLVM_SRC=$PWD/llvm-project
+LLVM_VERSION=22.1.8
 LLVM_INSTALL=$2
 
 # Script to build full toolchain for riscv32-unknown-linux-gnu with
@@ -25,32 +24,24 @@ make -j$(nproc) linux
 
 popd
 rm -rf $RISCV_GNU_TOOLCHAIN_SRC
+
+# Strip host binaries (target libs in sysroot stay untouched)
+find $RISCV_GNU_TOOLCHAIN_INSTALL/bin $RISCV_GNU_TOOLCHAIN_INSTALL/libexec \
+    -type f -exec strip --strip-unneeded {} \; 2>/dev/null || true
+
 echo "Toolchain built and installed in $RISCV_GNU_TOOLCHAIN_INSTALL"
 
-git clone https://github.com/llvm/llvm-project.git $LLVM_SRC -b $LLVM_TAG --depth 1
-pushd $LLVM_SRC
-mkdir build && cd build
-cmake -G "Ninja" \
-    -DCMAKE_INSTALL_PREFIX=$LLVM_INSTALL \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DLLVM_TARGETS_TO_BUILD="RISCV" \
-    -DCMAKE_C_COMPILER=clang \
-    -DCMAKE_CXX_COMPILER=clang++ \
-    -DLLVM_ENABLE_PROJECTS="clang;lld" \
-    -DLLVM_DEFAULT_TARGET_TRIPLE="riscv32-unknown-linux-gnu" \
-    -DLLVM_INSTALL_TOOLCHAIN_ONLY=On \
-    -DDEFAULT_SYSROOT=$RISCV_GNU_TOOLCHAIN_INSTALL/sysroot \
-    $LLVM_SRC/llvm
-ninja -j$(nproc)
-ninja install
+# Prebuilt LLVM (clang, lld); target/sysroot are set via clang config file
+case $(uname -m) in
+    x86_64) LLVM_ARCH=X64 ;;
+    aarch64) LLVM_ARCH=ARM64 ;;
+    *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+esac
 
-popd
-echo "LLVM toolchain built and installed in $LLVM_INSTALL"
+mkdir -p $LLVM_INSTALL
+curl -fL https://github.com/llvm/llvm-project/releases/download/llvmorg-$LLVM_VERSION/LLVM-$LLVM_VERSION-Linux-$LLVM_ARCH.tar.xz \
+    | tar -xJ --strip-components=1 -C $LLVM_INSTALL
+rm -f $LLVM_INSTALL/lib/*.a
+
+echo "LLVM toolchain installed in $LLVM_INSTALL"
 echo "RISC-V toolchain build completed successfully."
-
-# Cleanup
-rm -rf $RISCV_GNU_TOOLCHAIN_SRC
-rm -rf $LLVM_SRC
-echo "Temporary files cleaned up."
-# End of script
-# EOF

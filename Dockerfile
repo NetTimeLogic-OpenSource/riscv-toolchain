@@ -8,7 +8,6 @@ RUN apt-get update \
     autotools-dev \
     curl \
     python3 \
-    python3-pip \
     python3-tomli \
     libmpc-dev \
     libmpfr-dev \
@@ -24,13 +23,8 @@ RUN apt-get update \
     bc \
     zlib1g-dev \
     libexpat-dev \
-    ninja-build \
     git \
-    cmake \
-    llvm \
-    clang \
-    libglib2.0-dev \
-    libslirp-dev \
+    xz-utils \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
