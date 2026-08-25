@@ -38,10 +38,27 @@ case $(uname -m) in
     *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
 esac
 
-mkdir -p $LLVM_INSTALL
+# The release tarball is the full LLVM distribution (~5 GB); install only
+# what the toolchain uses
+LLVM_TMP=$PWD/llvm-dist
+mkdir -p $LLVM_TMP
 curl -fL https://github.com/llvm/llvm-project/releases/download/llvmorg-$LLVM_VERSION/LLVM-$LLVM_VERSION-Linux-$LLVM_ARCH.tar.xz \
-    | tar -xJ --strip-components=1 -C $LLVM_INSTALL
-rm -f $LLVM_INSTALL/lib/*.a
+    | tar -xJ --strip-components=1 -C $LLVM_TMP
+
+LLVM_MAJOR=${LLVM_VERSION%%.*}
+mkdir -p $LLVM_INSTALL/bin $LLVM_INSTALL/lib
+for tool in clang clang++ clang-cpp clang-$LLVM_MAJOR lld ld.lld llvm-ar llvm-ranlib llvm-strip llvm-objcopy llvm-nm; do
+    cp -P $LLVM_TMP/bin/$tool $LLVM_INSTALL/bin/
+done
+cp -rP $LLVM_TMP/lib/clang $LLVM_INSTALL/lib/
+cp -P $LLVM_TMP/lib/libclang.so* $LLVM_INSTALL/lib/
+cp -P $LLVM_TMP/lib/libclang-cpp.so* $LLVM_INSTALL/lib/ 2>/dev/null || true
+cp -P $LLVM_TMP/lib/libLLVM.so* $LLVM_INSTALL/lib/ 2>/dev/null || true
+rm -rf $LLVM_TMP
+
+$LLVM_INSTALL/bin/clang --version
+$LLVM_INSTALL/bin/ld.lld --version
+$LLVM_INSTALL/bin/llvm-ar --version > /dev/null
 
 echo "LLVM toolchain installed in $LLVM_INSTALL"
 echo "RISC-V toolchain build completed successfully."
